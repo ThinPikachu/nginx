@@ -1,0 +1,230 @@
+[1mdiff --git a/src/http/modules/ngx_http_grpc_module.c b/src/http/modules/ngx_http_grpc_module.c[m
+[1mindex 58332866..3a90cab9 100644[m
+[1m--- a/src/http/modules/ngx_http_grpc_module.c[m
+[1m+++ b/src/http/modules/ngx_http_grpc_module.c[m
+[36m@@ -4979,10 +4979,17 @@[m [mngx_http_grpc_set_ssl(ngx_conf_t *cf, ngx_http_grpc_loc_conf_t *glcf)[m
+             }[m
+ [m
+         } else {[m
+[32m+[m[41m            [m
+[32m+[m[32m#if (T_NGX_SSL_NTLS)[m
+[32m+[m[32m        if (ngx_ssl_certificate(cf, glcf->upstream.ssl, &glcf->ssl_certificate,[m
+[32m+[m[32m                                &glcf->ssl_certificate_key, glcf->ssl_passwords,[m
+[32m+[m[32m                                SSL_NORMAL_CERT)[m
+[32m+[m[32m#else[m
+             if (ngx_ssl_certificate(cf, glcf->upstream.ssl,[m
+                                     &glcf->upstream.ssl_certificate->value,[m
+                                     &glcf->upstream.ssl_certificate_key->value,[m
+                                     glcf->upstream.ssl_passwords)[m
+[32m+[m[32m#endif[m
+                 != NGX_OK)[m
+             {[m
+                 return NGX_ERROR;[m
+[1mdiff --git a/src/http/modules/ngx_http_proxy_module.c b/src/http/modules/ngx_http_proxy_module.c[m
+[1mindex 54e2a396..fc77e5db 100644[m
+[1m--- a/src/http/modules/ngx_http_proxy_module.c[m
+[1m+++ b/src/http/modules/ngx_http_proxy_module.c[m
+[36m@@ -126,6 +126,12 @@[m [mtypedef struct {[m
+     ngx_str_t                      ssl_crl;[m
+     ngx_array_t                   *ssl_conf_commands;[m
+ #endif[m
+[32m+[m
+[32m+[m[32m#if (T_NGX_SSL_NTLS)[m
+[32m+[m[32mngx_http_complex_value_t     *ssl_certificate;[m
+[32m+[m[32mngx_http_complex_value_t     *ssl_certificate_key;[m
+[32m+[m[32mngx_array_t           *ssl_passwords;[m
+[32m+[m[32m#endif[m
+ } ngx_http_proxy_loc_conf_t;[m
+ [m
+ [m
+[36m@@ -5028,11 +5034,19 @@[m [mngx_http_proxy_set_ssl(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *plcf)[m
+             }[m
+ [m
+         } else {[m
+[32m+[m
+[32m+[m[32m#if (T_NGX_SSL_NTLS)[m
+[32m+[m[32m            if (ngx_ssl_certificate(cf, plcf->upstream.ssl,[m
+[32m+[m[32m                                    &plcf->ssl_certificate->value,[m
+[32m+[m[32m                                    &plcf->ssl_certificate_key->value,[m
+[32m+[m[32m                                    plcf->ssl_passwords,[m
+[32m+[m[32m                                    SSL_NORMAL_CERT) != NGX_OK)[m
+[32m+[m[32m#else[m
+             if (ngx_ssl_certificate(cf, plcf->upstream.ssl,[m
+                                     &plcf->upstream.ssl_certificate->value,[m
+                                     &plcf->upstream.ssl_certificate_key->value,[m
+[31m-                                    plcf->upstream.ssl_passwords)[m
+[31m-                != NGX_OK)[m
+[32m+[m[32m                                    plcf->upstream.ssl_passwords) != NGX_OK)[m
+[32m+[m[32m#endif[m
+             {[m
+                 return NGX_ERROR;[m
+             }[m
+[1mdiff --git a/src/http/modules/ngx_http_ssl_module.c b/src/http/modules/ngx_http_ssl_module.c[m
+[1mindex 2123c09c..4ee3e21a 100644[m
+[1m--- a/src/http/modules/ngx_http_ssl_module.c[m
+[1m+++ b/src/http/modules/ngx_http_ssl_module.c[m
+[36m@@ -746,32 +746,26 @@[m [mngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)[m
+             return NGX_CONF_ERROR;[m
+         }[m
+ [m
+[31m-#if (T_NGX_SSL_NTLS)[m
+         if (conf->certificates) {[m
+[31m-#endif[m
+             if (conf->certificate_keys == NULL) {[m
+                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,[m
+[31m-                              "no \"ssl_certificate_key\" is defined for "[m
+[31m-                              "the \"ssl\" directive in %s:%ui",[m
+[31m-                              conf->file, conf->line);[m
+[32m+[m[32m                                "no \"ssl_certificate_key\" is defined for "[m
+[32m+[m[32m                                "the \"ssl\" directive in %s:%ui",[m
+[32m+[m[32m                                conf->file, conf->line);[m
+                 return NGX_CONF_ERROR;[m
+             }[m
+ [m
+             if (conf->certificate_keys->nelts < conf->certificates->nelts) {[m
+                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,[m
+[31m-                              "no \"ssl_certificate_key\" is defined "[m
+[31m-                              "for certificate \"%V\" and "[m
+[31m-                              "the \"ssl\" directive in %s:%ui",[m
+[31m-                              ((ngx_str_t *) conf->certificates->elts)[m
+[31m-                              + conf->certificates->nelts - 1,[m
+[31m-                              conf->file, conf->line);[m
+[32m+[m[32m                                "no \"ssl_certificate_key\" is defined "[m
+[32m+[m[32m                                "for certificate \"%V\" and "[m
+[32m+[m[32m                                "the \"ssl\" directive in %s:%ui",[m
+[32m+[m[32m                                ((ngx_str_t *) conf->certificates->elts)[m
+[32m+[m[32m                                + conf->certificates->nelts - 1,[m
+[32m+[m[32m                                conf->file, conf->line);[m
+                 return NGX_CONF_ERROR;[m
+             }[m
+[31m-#if (T_NGX_SSL_NTLS)[m
+[31m-        }[m
+[31m-#endif[m
+[31m-[m
+[31m-        else if (!conf->reject_handshake) {[m
+[32m+[m[32m        } else if (!conf->reject_handshake) {[m
+             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,[m
+                           "no \"ssl_certificate\" is defined for "[m
+                           "the \"ssl\" directive in %s:%ui",[m
+[36m@@ -1440,12 +1434,32 @@[m [mngx_http_ssl_init(ngx_conf_t *cf)[m
+             cscf = addr[a].default_server;[m
+             sscf = cscf->ctx->srv_conf[ngx_http_ssl_module.ctx_index];[m
+ [m
+[31m-            if (sscf->certificates) {[m
+[32m+[m[32m            if (sscf->certificates[m[41m     [m
+[32m+[m[32m#if (T_NGX_SSL_NTLS)[m
+[32m+[m[32m                || sscf->sign_certificate.len > 0[m
+[32m+[m[32m                || sscf->enc_certificate.len > 0[m
+[32m+[m[32m#endif[m
+[32m+[m[32m            ) {[m
+                 continue;[m
+             }[m
+[31m-            [m
+ [m
+[31m-            if (!sscf->reject_handshake) {[m
+[32m+[m[32m            if (sscf->certificates == NULL[m
+[32m+[m[32m#if (T_NGX_SSL_NTLS)[m
+[32m+[m[32m                && sscf->sign_certificate.len == 0[m
+[32m+[m[32m                && sscf->enc_certificate.len == 0[m
+[32m+[m[32m#endif[m
+[32m+[m[32m            ) {[m
+[32m+[m[32m                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,[m
+[32m+[m[32m#if (T_NGX_SSL_NTLS)[m
+[32m+[m[32m                              "no \"ssl_certificate\", \"ssl_enc_certificate\" "[m
+[32m+[m[32m                              "or \"ssl_sign_certificate\" is defined for "[m
+[32m+[m[32m#else[m
+[32m+[m[32m                              "no \"ssl_certificate\" is defined for "[m
+[32m+[m[32m#endif[m
+[32m+[m[32m                              "the \"listen ... ssl\" directive in %s:%ui",[m
+[32m+[m[32m                              cscf->file_name, cscf->line);[m
+[32m+[m[32m                return NGX_ERROR;[m
+[32m+[m[32m            } else if (!sscf->reject_handshake) {[m
+                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,[m
+                               "no \"ssl_certificate\" is defined for "[m
+                               "the \"listen ... ssl\" directive in %s:%ui",[m
+[36m@@ -1469,7 +1483,7 @@[m [mngx_http_ssl_init(ngx_conf_t *cf)[m
+                 }[m
+ [m
+                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,[m
+[31m-                              "no \"ssl_certificate\" is defined for "[m
+[32m+[m[32m                              "no \"ssl_certificate\" or \"reject_handshake\" is defined for "[m
+                               "the \"listen ... ssl\" directive in %s:%ui",[m
+                               cscf->file_name, cscf->line);[m
+                 return NGX_ERROR;[m
+[1mdiff --git a/src/http/modules/ngx_http_ssl_module.h b/src/http/modules/ngx_http_ssl_module.h[m
+[1mindex 7ab0f7ea..cd3da2ef 100644[m
+[1m--- a/src/http/modules/ngx_http_ssl_module.h[m
+[1m+++ b/src/http/modules/ngx_http_ssl_module.h[m
+[36m@@ -67,6 +67,14 @@[m [mtypedef struct {[m
+ [m
+     u_char                         *file;[m
+     ngx_uint_t                      line;[m
+[32m+[m
+[32m+[m[32m#if (T_NGX_SSL_NTLS)[m
+[32m+[m[32m    ngx_flag_t                      enable_ntls;[m
+[32m+[m[32m    ngx_str_t                       enc_certificate;[m
+[32m+[m[32m    ngx_str_t                       enc_certificate_key;[m
+[32m+[m[32m    ngx_str_t                       sign_certificate;[m
+[32m+[m[32m    ngx_str_t                       sign_certificate_key;[m
+[32m+[m[32m#endif[m
+ } ngx_http_ssl_srv_conf_t;[m
+ [m
+ [m
+[1mdiff --git a/src/http/modules/ngx_http_uwsgi_module.c b/src/http/modules/ngx_http_uwsgi_module.c[m
+[1mindex 4fc663d0..502b7c6c 100644[m
+[1m--- a/src/http/modules/ngx_http_uwsgi_module.c[m
+[1m+++ b/src/http/modules/ngx_http_uwsgi_module.c[m
+[36m@@ -2563,8 +2563,11 @@[m [mngx_http_uwsgi_set_ssl(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *uwcf)[m
+             if (ngx_ssl_certificate(cf, uwcf->upstream.ssl,[m
+                                     &uwcf->upstream.ssl_certificate->value,[m
+                                     &uwcf->upstream.ssl_certificate_key->value,[m
+[31m-                                    uwcf->upstream.ssl_passwords)[m
+[31m-                != NGX_OK)[m
+[32m+[m[32m                                    uwcf->upstream.ssl_passwords[m
+[32m+[m[32m#if (T_NGX_SSL_NTLS)[m
+[32m+[m[32m                                    ,SSL_NORMAL_CERT[m
+[32m+[m[32m#endif[m
+[32m+[m[32m                                    ) != NGX_OK)[m
+             {[m
+                 return NGX_ERROR;[m
+             }[m
+[1mdiff --git a/src/stream/ngx_stream_proxy_module.c b/src/stream/ngx_stream_proxy_module.c[m
+[1mindex 6b0d43ea..55c9c5e0 100644[m
+[1m--- a/src/stream/ngx_stream_proxy_module.c[m
+[1m+++ b/src/stream/ngx_stream_proxy_module.c[m
+[36m@@ -2300,10 +2300,16 @@[m [mngx_stream_proxy_set_ssl(ngx_conf_t *cf, ngx_stream_proxy_srv_conf_t *pscf)[m
+             }[m
+ [m
+         } else {[m
+[32m+[m[32m        #if (T_NGX_SSL_NTLS)[m
+[32m+[m[32m            if (ngx_ssl_certificate(cf, pscf->ssl, &pscf->ssl_certificate->value,[m
+[32m+[m[32m                                &pscf->ssl_certificate_key->value, pscf->ssl_passwords,[m
+[32m+[m[32m                                SSL_NORMAL_CERT)[m
+[32m+[m[32m        #else[m
+             if (ngx_ssl_certificate(cf, pscf->ssl,[m
+                                     &pscf->ssl_certificate->value,[m
+                                     &pscf->ssl_certificate_key->value,[m
+                                     pscf->ssl_passwords)[m
+[32m+[m[32m        #endif[m
+                 != NGX_OK)[m
+             {[m
+                 return NGX_ERROR;[m
+[1mdiff --git a/src/stream/ngx_stream_ssl_module.h b/src/stream/ngx_stream_ssl_module.h[m
+[1mindex e7c825e9..f7215c38 100644[m
+[1m--- a/src/stream/ngx_stream_ssl_module.h[m
+[1m+++ b/src/stream/ngx_stream_ssl_module.h[m
+[36m@@ -56,6 +56,14 @@[m [mtypedef struct {[m
+ [m
+     u_char          *file;[m
+     ngx_uint_t       line;[m
+[32m+[m
+[32m+[m[32m#if (T_NGX_SSL_NTLS)[m
+[32m+[m[32m    ngx_flag_t       enable_ntls;[m
+[32m+[m[32m    ngx_str_t        enc_certificate;[m
+[32m+[m[32m    ngx_str_t        enc_certificate_key;[m
+[32m+[m[32m    ngx_str_t        sign_certificate;[m
+[32m+[m[32m    ngx_str_t        sign_certificate_key;[m
+[32m+[m[32m#endif[m
+ } ngx_stream_ssl_conf_t;[m
+ [m
+ [m
